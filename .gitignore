@@ -4,3 +4,4 @@ dist/
 .wrangler/
 __pycache__/
 *.py[cod]
+chat_history/
