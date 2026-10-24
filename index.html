@@ -3,54 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101114" />
+    <meta name="theme-color" content="#111019" />
     <title>not dungarAI</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
         <a class="brand" href="/" aria-label="not dungarAI home">
           <span class="brand-mark">n</span>
           <span>not dungar<span class="brand-ai">AI</span></span>
         </a>
-        <button id="new-chat" class="new-chat" type="button"><span>＋</span> New chat</button>
-        <div class="history-heading">YOUR CHATS</div>
+        <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">＋</span> New chat</button>
+        <div class="history-heading">RECENTS</div>
         <nav id="chat-list" class="chat-list" aria-label="Chat history"></nav>
         <div class="sidebar-bottom">
-          <span class="status-dot"></span><span>Groq-powered</span>
+          <span class="status-dot"></span><span>Ready when you are</span>
           <button id="logout" class="text-button" type="button" hidden>Sign out</button>
         </div>
       </aside>
+      <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="Close chat history"></button>
       <main class="main">
         <header class="topbar">
           <button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="Toggle chat history">☰</button>
-          <span class="model-label"><span class="status-dot"></span> GPT OSS 120B <span class="model-provider">via Groq</span></span>
-          <button id="login" class="login-button" type="button">Sign in</button>
+          <div class="model-label"><span class="status-dot"></span><span>GPT OSS 120B</span><span class="model-provider">via Groq</span></div>
+          <div class="auth-buttons">
+            <button id="signup" class="signup-button" type="button">Create account</button>
+            <button id="login" class="login-button" type="button">Sign in <span aria-hidden="true">↗</span></button>
+          </div>
         </header>
         <section id="welcome" class="welcome">
-          <div class="welcome-mark">n</div>
-          <p class="eyebrow">A LITTLE SPACE TO THINK</p>
-          <h1>What’s on your mind?</h1>
-          <p class="welcome-copy">Ask anything, explore an idea, or turn a rough thought into a great prompt.</p>
+          <div class="welcome-mark" aria-hidden="true">n</div>
+          <p class="eyebrow"><span></span> YOUR THOUGHT PARTNER</p>
+          <h1>Good ideas start<br />with a question.</h1>
+          <p class="welcome-copy">Get a clear answer, explore a new idea, or make a plan.<br class="desktop-break" /> Start wherever your curiosity takes you.</p>
           <div class="suggestions">
-            <button class="suggestion" type="button" data-prompt="Help me understand a difficult idea in simple terms.">Explain something clearly <span>↗</span></button>
-            <button class="suggestion" type="button" data-prompt="Help me brainstorm creative ideas for a project.">Brainstorm ideas <span>↗</span></button>
-            <button class="suggestion" type="button" data-prompt="Help me make a practical plan for a goal I have.">Make a practical plan <span>↗</span></button>
+            <button class="suggestion" type="button" data-prompt="Help me understand a difficult idea in simple terms."><span class="suggestion-icon" aria-hidden="true">✳</span><span class="suggestion-copy"><strong>Explain something</strong><small>Make a tricky idea simple</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+            <button class="suggestion" type="button" data-prompt="Help me brainstorm creative ideas for a project."><span class="suggestion-icon" aria-hidden="true">✧</span><span class="suggestion-copy"><strong>Brainstorm ideas</strong><small>Find a fresh perspective</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
+            <button class="suggestion" type="button" data-prompt="Help me make a practical plan for a goal I have."><span class="suggestion-icon" aria-hidden="true">↗</span><span class="suggestion-copy"><strong>Make a practical plan</strong><small>Turn a goal into next steps</small></span><span class="suggestion-arrow" aria-hidden="true">↗</span></button>
           </div>
         </section>
-        <section id="messages" class="messages" aria-live="polite"></section>
+        <section id="messages" class="messages" aria-live="off"></section>
         <section class="composer-wrap">
-          <div id="auth-notice" class="auth-notice">Sign in to save chats and start a conversation.</div>
+          <div id="auth-notice" class="auth-notice"><span aria-hidden="true">✦</span> Sign in to start a conversation and keep your chats.</div>
           <form id="chat-form" class="composer">
-            <textarea id="message-input" rows="1" placeholder="Message not dungarAI…" maxlength="12000" aria-label="Message"></textarea>
+            <textarea id="message-input" rows="1" placeholder="Ask anything…" maxlength="12000" aria-label="Message"></textarea>
             <div class="composer-tools">
-              <button id="prompt-button" class="prompt-button" type="button"><span>✳</span> Generate a prompt</button>
+              <button id="prompt-button" class="prompt-button" type="button"><span aria-hidden="true">✧</span> Prompt studio</button>
               <span class="input-hint">Enter to send · Shift + Enter for a new line</span>
-              <button id="send-button" class="send-button" type="submit" aria-label="Send message">↑</button>
+              <button id="send-button" class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button>
             </div>
           </form>
-          <p class="disclaimer">AI can make mistakes. Check important information.</p>
+          <p class="disclaimer">Not dungarAI can make mistakes. Verify anything important.</p>
         </section>
       </main>
     </div>
@@ -64,6 +68,7 @@
       <div id="generated-prompt" class="generated-prompt" hidden></div>
       <button id="use-prompt" class="secondary-button" type="button" hidden>Use this prompt</button>
     </dialog>
-    <script type="module" src="/src/client.ts"></script>
+    <div id="auth-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
