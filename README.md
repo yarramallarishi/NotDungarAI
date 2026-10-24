@@ -1,5 +1,7 @@
 # not dungarAI
 
+Try it out: https://not-dungar-ai.yarramallarishi.workers.dev/
+
 A Cloudflare Workers chat app using Groq for AI responses, D1 for chat history, and Auth0 for public user sign-in. Each account can access only its own chats. The Groq API key stays in the Worker secret store, and each account is limited to 50 AI requests per day by default.
 
 An API key only authenticates requests; it does not fine-tune or train the provider's model. This app uses the Groq model configured in `src/worker.ts` and adds chat history and prompt generation around it.
