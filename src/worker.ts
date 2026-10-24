@@ -30,9 +30,31 @@ interface Message {
   created_at: string;
 }
 
+interface AssistantMessage {
+  id: string;
+  thread_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+interface AssistantMemory {
+  id: string;
+  content: string;
+  created_at: string;
+}
+
 const MAX_MESSAGE_LENGTH = 12_000;
 const MODEL = "openai/gpt-oss-120b";
 const jwksByIssuer = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const MEMORY_STOP_WORDS = new Set([
+  "about", "after", "again", "also", "been", "before", "being", "could", "did",
+  "does", "from", "have", "her", "here", "how", "into", "just", "more", "most",
+  "much", "must", "other", "our", "should", "some", "tell", "than", "that",
+  "their", "them", "then", "there", "these", "they", "this", "those", "through",
+  "under", "very", "was", "were", "what", "when", "where", "which", "while",
+  "who", "why", "will", "with", "would", "you", "your",
+]);
 
 function json(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: { "cache-control": "no-store" } });
@@ -127,6 +149,15 @@ async function getOwnedChat(env: Env, userId: string, id: string): Promise<Chat 
     .first<Chat>();
 }
 
+function getSearchTerms(query: string): string[] {
+  const terms = query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+  return [...new Set(terms.filter((term) => !MEMORY_STOP_WORDS.has(term)))].slice(0, 8);
+}
+
+function isValidAssistantId(value: unknown): value is string {
+  return typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
+}
+
 async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
   if (request.method === "GET" && url.pathname === "/api/config") {
     const domain = env.AUTH0_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "");
@@ -149,6 +180,179 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
       .bind(identity.userId)
       .all<Chat>();
     return json({ chats: result.results });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/assistant/threads") {
+    const result = await env.DB.prepare(
+      `SELECT id, title, created_at, updated_at
+       FROM assistant_threads WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100`,
+    )
+      .bind(identity.userId)
+      .all();
+    return json({ threads: result.results });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/assistant/context") {
+    const threadId = url.searchParams.get("thread_id") ?? "";
+    if (threadId && !isValidAssistantId(threadId)) {
+      return json({ error: "Invalid thread ID." }, 400);
+    }
+    const query = url.searchParams.get("q") ?? "";
+    const terms = getSearchTerms(query);
+    const recent = threadId
+      ? await env.DB.prepare(
+          `SELECT id, thread_id, role, content, created_at
+           FROM assistant_history
+           WHERE user_id = ? AND thread_id = ?
+           ORDER BY created_at DESC, rowid DESC LIMIT 32`,
+        )
+          .bind(identity.userId, threadId)
+          .all<AssistantMessage>()
+      : { results: [] as AssistantMessage[] };
+    const relevant = terms.length
+      ? await env.DB.prepare(
+          `SELECT id, thread_id, role, content, created_at
+           FROM assistant_history
+           WHERE user_id = ? AND (${terms.map(() => "instr(lower(content), lower(?)) > 0").join(" OR ")})
+           ORDER BY created_at DESC, rowid DESC LIMIT 80`,
+        )
+          .bind(identity.userId, ...terms)
+          .all<AssistantMessage>()
+      : { results: [] as AssistantMessage[] };
+    const websiteRelevant = terms.length
+      ? await env.DB.prepare(
+          `SELECT messages.id, chats.id AS thread_id, messages.role, messages.content,
+                  messages.created_at
+           FROM messages
+           INNER JOIN chats ON chats.id = messages.chat_id
+           WHERE chats.user_id = ?
+             AND (${terms.map(() => "instr(lower(messages.content), lower(?)) > 0").join(" OR ")})
+           ORDER BY messages.created_at DESC, messages.rowid DESC LIMIT 80`,
+        )
+          .bind(identity.userId, ...terms)
+          .all<AssistantMessage>()
+      : { results: [] as AssistantMessage[] };
+    const memories = terms.length
+      ? await env.DB.prepare(
+          `SELECT id, content, created_at FROM assistant_memories
+           WHERE user_id = ? AND (${terms.map(() => "instr(lower(content), lower(?)) > 0").join(" OR ")})
+           ORDER BY created_at DESC LIMIT 100`,
+        )
+          .bind(identity.userId, ...terms)
+          .all<AssistantMemory>()
+      : await env.DB.prepare(
+          `SELECT id, content, created_at FROM assistant_memories
+           WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`,
+        )
+          .bind(identity.userId)
+          .all<AssistantMemory>();
+    return json({
+      recent: recent.results.reverse(),
+      relevant: [...relevant.results, ...websiteRelevant.results],
+      memories: memories.results,
+    });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/assistant/memories") {
+    const result = await env.DB.prepare(
+      "SELECT id, content, created_at FROM assistant_memories WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+    )
+      .bind(identity.userId)
+      .all<AssistantMemory>();
+    return json({ memories: result.results });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/assistant/memories") {
+    const body = await parseJson(request);
+    const content = typeof body?.content === "string" ? body.content.trim() : "";
+    if (!content || content.length > 2_000) {
+      return json({ error: "Memory must be 1-2000 characters." }, 400);
+    }
+    const id = newId();
+    await env.DB.prepare(
+      "INSERT INTO assistant_memories (id, user_id, content) VALUES (?, ?, ?)",
+    )
+      .bind(id, identity.userId, content)
+      .run();
+    return json({ memory: { id, content } }, 201);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/assistant/turn") {
+    const body = await parseJson(request);
+    const threadId = body?.thread_id;
+    const title = typeof body?.title === "string" ? body.title.trim().slice(0, 80) : "";
+    const userContent = typeof body?.user === "string" ? body.user.trim() : "";
+    const assistantContent = typeof body?.assistant === "string" ? body.assistant.trim() : "";
+    if (
+      !isValidAssistantId(threadId) ||
+      !userContent ||
+      userContent.length > MAX_MESSAGE_LENGTH ||
+      !assistantContent ||
+      assistantContent.length > 30_000
+    ) {
+      return json({ error: "Invalid conversation turn." }, 400);
+    }
+    const threadTitle = title || userContent.slice(0, 80);
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO assistant_threads (id, user_id, title) VALUES (?, ?, ?)
+         ON CONFLICT(user_id, id) DO UPDATE SET
+           title = CASE WHEN assistant_threads.title = 'New chat' THEN excluded.title ELSE assistant_threads.title END,
+           updated_at = datetime('now')`,
+      ).bind(threadId, identity.userId, threadTitle),
+      env.DB.prepare(
+        "INSERT INTO assistant_history (id, user_id, thread_id, role, content) VALUES (?, ?, ?, 'user', ?)",
+      ).bind(newId(), identity.userId, threadId, userContent),
+      env.DB.prepare(
+        "INSERT INTO assistant_history (id, user_id, thread_id, role, content) VALUES (?, ?, ?, 'assistant', ?)",
+      ).bind(newId(), identity.userId, threadId, assistantContent),
+      env.DB.prepare(
+        "UPDATE assistant_threads SET updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+      ).bind(threadId, identity.userId),
+    ]);
+    return json({ saved: true });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/assistant/import") {
+    const body = await parseJson(request);
+    const threadId = body?.thread_id;
+    const title = typeof body?.title === "string" ? body.title.trim().slice(0, 80) : "";
+    const messages = body?.messages;
+    if (
+      !isValidAssistantId(threadId) ||
+      !title ||
+      !Array.isArray(messages) ||
+      messages.length > 100
+    ) {
+      return json({ error: "Invalid chat import." }, 400);
+    }
+    const imported: Array<{ id: string; role: "user" | "assistant"; content: string }> = [];
+    for (const item of messages) {
+      if (
+        typeof item !== "object" ||
+        item === null ||
+        !isValidAssistantId(item.id) ||
+        (item.role !== "user" && item.role !== "assistant") ||
+        typeof item.content !== "string" ||
+        !item.content.trim() ||
+        item.content.length > 30_000
+      ) {
+        return json({ error: "Invalid chat import message." }, 400);
+      }
+      imported.push({ id: item.id, role: item.role, content: item.content });
+    }
+    const statements = [
+      env.DB.prepare(
+        "INSERT INTO assistant_threads (id, user_id, title) VALUES (?, ?, ?) ON CONFLICT(user_id, id) DO NOTHING",
+      ).bind(threadId, identity.userId, title),
+      ...imported.map((message) =>
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO assistant_history (id, user_id, thread_id, role, content) VALUES (?, ?, ?, ?, ?)",
+        ).bind(message.id, identity.userId, threadId, message.role, message.content),
+      ),
+    ];
+    await env.DB.batch(statements);
+    return json({ imported: imported.length });
   }
 
   if (request.method === "POST" && url.pathname === "/api/chats") {

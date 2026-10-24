@@ -21,6 +21,8 @@ The Auth0 tenant is configured with the `My App` Single Page Application, the SP
 
 `wrangler.toml` is set to that SPA's client ID and the API audience `https://not-dungar-ai-api`. Do not change the audience to the Auth0 Management API. Once the Cloudflare site is deployed, add its full Workers/custom-domain URL to all three Auth0 URL allowlists. Enable sign-ups only if you intend the site to be open to the public; configure email verification and abuse-prevention controls in Auth0.
 
+The Python terminal assistant also uses this public Auth0 client with Authorization Code + PKCE. `http://127.0.0.1:8765/callback` is configured under **Allowed Callback URLs** (it does not need to be added to logout URLs or web origins). The API audience must remain authorized for the same Auth0 application.
+
 ## Create and configure Cloudflare resources
 
 From PowerShell in this directory:
@@ -79,7 +81,7 @@ After deployment, add the assigned `*.workers.dev` URL to the Auth0 allowed call
 
 ## Python terminal assistant
 
-The optional `finetune.py` script is a separate terminal chat assistant using the same Groq API key. It can use Groq's built-in browser search and sandboxed code execution when useful, asks for clarification when important details are missing, and saves local conversation history under the ignored `chat_history/` directory.
+The optional `finetune.py` is a terminal chat assistant using the same Groq API key. It can use Groq's built-in browser search and sandboxed code execution when useful, asks for clarification when important details are missing, and stores its conversations and saved memories in your authenticated Cloudflare D1 account. It retrieves recent turns plus relevant older messages from both the website and terminal chats, along with saved memories, for each prompt. Earlier JSON chat files in `chat_history/` are imported to D1 the first time you sign in after upgrading; local copies remain as backups. The model still has a finite context window, so only selected relevant history is sent with each request.
 
 Set the key in PowerShell and run it from this project folder:
 
@@ -89,4 +91,4 @@ $env:GROQ_API_KEY = "your-groq-api-key"
 python .\finetune.py
 ```
 
-Use `/help` in the assistant to see commands for researching, listing saved chats, reopening conversations, and starting a new chat. Normal questions let the model choose whether search or code execution is useful; `/research <question>` requires a web search. The Groq API key must be available in the same terminal session and is never written to chat history.
+On first run, a browser opens for Auth0 sign-in. Sign in with the same account used on the website so both clients use the same private D1 data. Use `/help` to see commands for researching, listing saved chats, reopening conversations, starting a new chat, and saving/listing long-term memories (`/remember <fact>` and `/memories`). Normal questions let the model choose whether search or code execution is useful; `/research <question>` requires a web search. The Groq API key must be available in the same terminal session and is never written to chat history.
