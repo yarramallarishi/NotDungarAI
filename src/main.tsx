@@ -27,9 +27,13 @@ async function start(): Promise<void> {
   const session = {
     isLoading: false,
     isAuthenticated: await auth0.isAuthenticated(),
-    getAccessTokenSilently: () => auth0.getTokenSilently({
-      authorizationParams: { audience: config.auth0Audience },
-    }),
+    getAccessTokenSilently: async () => {
+      const accessToken = await auth0.getTokenSilently({
+        authorizationParams: { audience: config.auth0Audience },
+      });
+      if (!accessToken) throw new Error("Auth0 did not return an access token.");
+      return accessToken;
+    },
     loginWithRedirect: (signup = false) => auth0.loginWithRedirect({
       authorizationParams: signup ? { screen_hint: "signup" } : {},
     }),
@@ -79,7 +83,11 @@ async function start(): Promise<void> {
   `;
   document.body.append(dialog);
 
-  const token = async () => auth0.getTokenSilently({ authorizationParams: { audience: config.auth0Audience } });
+  const token = async () => {
+    const accessToken = await auth0.getTokenSilently({ authorizationParams: { audience: config.auth0Audience } });
+    if (!accessToken) throw new Error("Auth0 did not return an access token.");
+    return accessToken;
+  };
   const memoryRequest = async (path: string, init: RequestInit = {}) => {
     const accessToken = await token();
     const response = await nativeFetch(path, {
