@@ -101,7 +101,8 @@ async function askAgent(env: Env, prompt: string, history: StoredMessage[], cont
     headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
     body: JSON.stringify({
       model: MODEL, messages, temperature: 0.7, max_completion_tokens: 4096,
-      ...(research ? { tools: [{ type: "browser_search" }], tool_choice: "required" } : {}),
+      tools: research ? [{ type: "browser_search" }] : [{ type: "code_interpreter" }],
+      tool_choice: research ? "required" : "auto",
     }),
   });
   if (!response.ok) {
