@@ -92,3 +92,15 @@ python .\finetune.py
 ```
 
 On first run, a browser opens for Auth0 sign-in. Sign in with the same account used on the website so both clients use the same private D1 data. Use `/help` to see commands for researching, listing saved chats, reopening conversations, starting a new chat, and saving/listing long-term memories (`/remember <fact>` and `/memories`). Normal questions let the model choose whether search or code execution is useful; `/research <question>` requires a web search. The Groq API key must be available in the same terminal session and is never written to chat history.
+
+## Web agent upgrades
+
+The web chat now routes through `src/agent-worker.ts`, which keeps the original Worker as the handler for existing endpoints and upgrades chat turns in place.
+
+- **Research mode:** choose Auto, Always search, or No web search in the composer. Auto mode enables Groq browser search for prompts that appear to need current or sourced information.
+- **Persistent context:** chat turns retrieve relevant saved memories and matching excerpts from earlier chats in the same Auth0 account. Existing D1 tables are reused; no separate memory service is required.
+- **Memory controls:** open Memories in the sidebar to add, review, and delete account-scoped facts. The assistant only saves a memory automatically when the user explicitly asks it to remember something.
+- **Chat compatibility:** existing chat list, chat loading/deletion, prompt studio, Python terminal assistant, and legacy assistant endpoints remain in place.
+
+The browser research and sandboxed code-execution tools are provided by Groq. They use the existing `GROQ_API_KEY` Worker secret. The default research mode is automatic; users can override it per turn. When web research is not selected, the model can use the code interpreter for calculations and code-oriented tasks.
+

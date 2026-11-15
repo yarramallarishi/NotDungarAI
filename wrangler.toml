@@ -1,5 +1,5 @@
 name = "not-dungar-ai"
-main = "src/worker.ts"
+main = "src/agent-worker.ts"
 compatibility_date = "2026-10-24"
 
 [assets]

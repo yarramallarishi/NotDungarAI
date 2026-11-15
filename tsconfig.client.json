@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM"],
-    "types": []
+    "types": [],
+    "jsx": "preserve"
   },
-  "include": ["src/client.ts"]
+  "include": ["src/client.ts", "src/main.tsx"]
 }
