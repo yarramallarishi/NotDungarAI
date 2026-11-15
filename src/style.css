@@ -301,3 +301,10 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid #c
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+
+/* Small interaction refinements */
+.message-actions{display:flex;gap:8px;margin:7px 0 0 45px;opacity:.72}
+.message-copy{border:1px solid #ffffff12;border-radius:7px;background:#ffffff06;color:#a9a1b4;padding:5px 9px;font-size:10px;cursor:pointer}
+.message-copy:hover{border-color:#a77aff66;background:#b28ae51a;color:#e5d6fa}
+@media(max-width:700px){.message-actions{margin-left:39px}}
