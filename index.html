@@ -26,7 +26,7 @@
       <main class="main">
         <header class="topbar">
           <button id="mobile-menu" class="icon-button mobile-menu" type="button" aria-label="Toggle chat history">☰</button>
-          <div class="model-label"><span class="status-dot"></span><span>GPT OSS 120B</span><span class="model-provider">via Groq</span></div>
+          <div class="model-label"><span class="status-dot"></span><span>GPT OSS 120B</span></div>
           <div class="auth-buttons">
             <button id="signup" class="signup-button" type="button">Create account</button>
             <button id="login" class="login-button" type="button">Sign in <span aria-hidden="true">↗</span></button>
@@ -61,8 +61,8 @@
     <dialog id="prompt-dialog" class="prompt-dialog">
       <form method="dialog"><button class="dialog-close" aria-label="Close">×</button></form>
       <p class="eyebrow">PROMPT STUDIO</p>
-      <h2>Make your idea clearer.</h2>
-      <label for="prompt-idea">What do you want the AI to help with?</label>
+      <h2 id="prompt-studio-title">Make your idea clearer.</h2>
+      <label id="prompt-studio-label" for="prompt-idea">What do you want the AI to help with?</label>
       <textarea id="prompt-idea" rows="3" maxlength="2000" placeholder="e.g. Help me plan a small garden"></textarea>
       <button id="generate-prompt" class="primary-button" type="button">Generate prompt</button>
       <div id="generated-prompt" class="generated-prompt" hidden></div>

@@ -400,12 +400,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (!(await consumeDailyRequest(env, identity.userId))) {
       return json({ error: "You have reached the daily AI request limit. Please try again tomorrow." }, 429);
     }
+    const mode = body?.mode === "improve" ? "improve" : "create";
     try {
+      const instruction = mode === "improve"
+        ? "Improve the user's existing text into a clear, polished, effective prompt. Preserve the original intent, facts, constraints, tone, and requested outcome. Fix ambiguity and wording, add structure only where useful, and do not invent requirements or answer the prompt. Return only the improved text."
+        : "Turn the user's rough idea into one clear, specific, ready-to-use prompt. Include useful context, goal, constraints, and desired output format where relevant. Do not answer the prompt. Return only the prompt.";
       const prompt = await groqReply(env, [
-        {
-          role: "system",
-          content: "Turn the user's rough idea into one clear, specific, ready-to-use prompt. Include useful context, goal, constraints, and desired output format where relevant. Do not answer the prompt. Return only the prompt.",
-        },
+        { role: "system", content: instruction },
         { role: "user", content: idea },
       ]);
       return json({ prompt });

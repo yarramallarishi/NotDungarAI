@@ -35,6 +35,7 @@ let chats: Chat[] = [];
 let busy = false;
 let mounted = false;
 let previousAuthState: boolean | null = null;
+let promptStudioMode: "create" | "improve" = "create";
 
 export function updateAuthSession(session: AuthSession): void {
   auth = session;
@@ -365,6 +366,26 @@ function createMessage(message: Pick<Message, "role" | "content">): HTMLElement 
     content.append(paragraph);
   }
   row.append(avatar, content);
+  if (message.role === "assistant") {
+    const actions = document.createElement("div");
+    actions.className = "message-actions";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "message-copy";
+    copy.textContent = "Copy";
+    copy.setAttribute("aria-label", "Copy assistant response");
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(message.content);
+        copy.textContent = "Copied";
+        window.setTimeout(() => { copy.textContent = "Copy"; }, 1400);
+      } catch {
+        copy.textContent = "Copy unavailable";
+      }
+    });
+    actions.append(copy);
+    row.append(actions);
+  }
   return row;
 }
 
@@ -511,10 +532,17 @@ export function mountApp(): void {
     }),
   );
   byId<HTMLButtonElement>("prompt-button").addEventListener("click", () => {
-    byId<HTMLTextAreaElement>("prompt-idea").value = "";
+    const ideaField = byId<HTMLTextAreaElement>("prompt-idea");
+    const draft = input.value.trim();
+    promptStudioMode = draft ? "improve" : "create";
+    ideaField.value = draft;
     byId<HTMLElement>("generated-prompt").hidden = true;
     byId<HTMLButtonElement>("use-prompt").hidden = true;
+    byId<HTMLElement>("prompt-studio-title").textContent = draft ? "Improve your message." : "Make your idea clearer.";
+    byId<HTMLElement>("prompt-studio-label").textContent = draft ? "Edit the text below or keep it as-is. The AI will refine it without changing your intent." : "What do you want the AI to help with?";
+    byId<HTMLButtonElement>("generate-prompt").textContent = draft ? "Improve text" : "Generate prompt";
     promptDialog.showModal();
+    ideaField.focus();
   });
   byId<HTMLButtonElement>("generate-prompt").addEventListener("click", async (event) => {
     const button = event.currentTarget as HTMLButtonElement;
@@ -525,7 +553,7 @@ export function mountApp(): void {
     try {
       const result = await api<{ prompt: string }>("/api/prompts", {
         method: "POST",
-        body: JSON.stringify({ idea }),
+        body: JSON.stringify({ idea, mode: promptStudioMode }),
       });
       const output = byId<HTMLElement>("generated-prompt");
       output.textContent = result.prompt;
@@ -536,11 +564,12 @@ export function mountApp(): void {
       promptDialog.close();
     } finally {
       button.disabled = false;
-      button.textContent = "Generate prompt";
+      button.textContent = promptStudioMode === "improve" ? "Improve text" : "Generate prompt";
     }
   });
   byId<HTMLButtonElement>("use-prompt").addEventListener("click", () => {
     input.value = byId<HTMLElement>("generated-prompt").textContent ?? "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
     promptDialog.close();
     input.focus();
   });
