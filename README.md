@@ -102,5 +102,5 @@ The web chat now routes through `src/agent-worker.ts`, which keeps the original 
 - **Memory controls:** open Memories in the sidebar to add, review, and delete account-scoped facts. The assistant only saves a memory automatically when the user explicitly asks it to remember something.
 - **Chat compatibility:** existing chat list, chat loading/deletion, prompt studio, Python terminal assistant, and legacy assistant endpoints remain in place.
 
-The browser research tool is provided by Groq. It uses the existing `GROQ_API_KEY` Worker secret. The default research mode is automatic; users can override it per turn.
+The browser research and sandboxed code-execution tools are provided by Groq. They use the existing `GROQ_API_KEY` Worker secret. The default research mode is automatic; users can override it per turn. When web research is not selected, the model can use the code interpreter for calculations and code-oriented tasks.
 
